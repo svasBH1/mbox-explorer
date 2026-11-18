@@ -56,7 +56,8 @@ header { padding:10px 16px; border-bottom:1px solid var(--line); display:flex;
 header h1 { font-size:16px; margin:0; font-weight:600; }
 header h1 a { color:inherit; }
 header .meta { color:var(--muted); font-size:12px; }
-.themebtn { margin-left:auto; }
+.goto { margin-left:auto; }
+.goto input { width:110px; }
 a { color:var(--accent); text-decoration:none; }
 a:hover { text-decoration:underline; }
 input, select, button { padding:5px 8px; border:1px solid var(--line); border-radius:4px;
@@ -261,16 +262,32 @@ async function select(i) {
   if (S.sel >= 0 && rows[S.sel]) rows[S.sel].classList.remove('sel');
   S.sel = i; rows[i].classList.add('sel');
   rows[i].scrollIntoView({ block: 'nearest' });
+  await showMessage(S.ids[i]);
+  if (i > S.ids.length - 20 && S.more) more(S.seq);
+}
+
+async function showMessage(id) {
   const seq = ++MSG_SEQ;
   BUSY++; bar();
   try {
-    const r = await fetch('/msg?pane=1&id=' + S.ids[i]);
+    const r = await fetch('/msg?pane=1&id=' + encodeURIComponent(id));
     const h = await r.text();
     if (seq === MSG_SEQ) { $('pane').innerHTML = h; $('pane').scrollTop = 0; }
   } catch (e) {
     if (seq === MSG_SEQ) $('pane').textContent = 'Could not load the message: ' + e.message;
   } finally { BUSY--; bar(); }
-  if (i > S.ids.length - 20 && S.more) more(S.seq);
+}
+
+// Go to a message by its id, whether or not it is in the current results.
+function goTo(id) {
+  id = String(id).replace(/[^0-9]/g, '');
+  if (!id) return;
+  const rows = $('rows').children;
+  if (S.sel >= 0 && rows[S.sel]) rows[S.sel].classList.remove('sel');
+  const i = S.ids.indexOf(+id);
+  S.sel = i;
+  if (i >= 0) { rows[i].classList.add('sel'); rows[i].scrollIntoView({ block: 'nearest' }); }
+  showMessage(id);
 }
 
 document.addEventListener('keydown', e => {
@@ -286,6 +303,8 @@ addEventListener('DOMContentLoaded', () => {
   document.forms.search.addEventListener('submit', e => { e.preventDefault(); run(); });
   document.forms.search.source && document.forms.search.source.addEventListener('change', run);
   document.forms.search.sort.addEventListener('change', run);
+  document.forms.goto.addEventListener('submit', e => { e.preventDefault(); goTo(document.forms.goto.msgid.value); });
+  if (p.get('id')) goTo(p.get('id'));
   new IntersectionObserver(es => { if (es[0].isIntersecting) more(S.seq); },
                            { root: $('list'), rootMargin: '600px' }).observe($('sentinel'));
   addEventListener('resize', setTop);
@@ -538,7 +557,9 @@ class Handler(BaseHTTPRequestHandler):
             picker = f'<select name="source" title="Source">{"".join(opts)}</select>'
         body = f"""<header><h1><a href="/">Mail Archive</a></h1>
 <span class="meta" id="count"></span>
-<span class="meta">{self.store.total:,} messages indexed</span>{theme_button()}</header>
+<span class="meta">{self.store.total:,} messages indexed</span>
+<form name="goto" class="goto" autocomplete="off" title="Open a message by its id (shown on every message)">
+<input name="msgid" inputmode="numeric" placeholder="go to id #" size="10"></form>{theme_button()}</header>
 <div id="bar"><span></span></div>
 <form class="search" name="search" autocomplete="off">
 <input name="q" placeholder="Search subject, body, people…  (AND, OR, NOT, NEAR, &quot;phrases&quot;)" autofocus>
