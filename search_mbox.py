@@ -91,16 +91,15 @@ def main():
     where, params = [], []
 
     if a.query:
-        sel = sel.replace("SELECT ", "SELECT ")
         src_join += " JOIN messages_fts f ON f.rowid = m.id"
         where.append("messages_fts MATCH ?")
         params.append(fts_query(a.query))
-    for col, val in (("m.subject", a.subject), ("m.to_addrs || ' ' || m.cc_addrs", a.recipient)):
+    for col, val in (("m.subject", a.subject), ("COALESCE(m.to_addrs,'') || ' ' || COALESCE(m.cc_addrs,'')", a.recipient)):
         if val:
             where.append(f"{col} LIKE ?")
             params.append(f"%{val}%")
     if a.sender:
-        where.append("(m.from_addr LIKE ? OR m.from_name LIKE ?)")
+        where.append("(COALESCE(m.from_addr,'') LIKE ? OR COALESCE(m.from_name,'') LIKE ?)")
         params += [f"%{a.sender}%", f"%{a.sender}%"]
     if a.source and multi:
         where.append("s.label LIKE ?")
