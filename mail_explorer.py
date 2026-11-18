@@ -225,8 +225,9 @@ async function loadSenders(p, seq) {
     chips.push(...d.senders.map(s => '<span class="chip" title="' + s.count.toLocaleString() + ' messages">'
         + '<a href="#" data-only="' + esc(s.domain) + '">' + esc(s.domain) + '</a> '
         + s.count.toLocaleString()
-        + '<button type="button" title="Exclude this sender domain" data-ex="' + esc(s.domain) + '">✕</button></span>'));
-    box.innerHTML = '<span>Top senders:</span>' + (chips.join('') || '<span>none</span>');
+        + '<button type="button" title="Exclude this sender" data-ex="' + esc(s.domain) + '">✕</button></span>'));
+    const label = d.by === 'address' ? 'Top sender addresses:' : 'Top sender domains:';
+    box.innerHTML = '<span>' + label + '</span>' + (chips.join('') || '<span>none</span>');
   } catch (e) { box.textContent = ''; }
   setTop();
 }
@@ -408,13 +409,17 @@ class Store:
         return self.conn.execute(f'SELECT COUNT(*) {sql}', params).fetchone()[0]
 
     def senders(self, f):
-        """Top sender domains for the current filters."""
+        """Top senders for the current filters: by domain, or by address once a from filter is set."""
         sql, params, _ = self.where(f)
-        dom = ("LOWER(CASE WHEN INSTR(COALESCE(m.from_addr,''), '@') > 0 "
-               "THEN SUBSTR(m.from_addr, INSTR(m.from_addr, '@') + 1) ELSE COALESCE(m.from_addr,'') END)")
-        rows = self.conn.execute(f'SELECT {dom} AS d, COUNT(*) AS n {sql} GROUP BY d '
+        if f.get('from'):
+            key, by = "LOWER(COALESCE(m.from_addr,''))", 'address'
+        else:
+            key, by = ("LOWER(CASE WHEN INSTR(COALESCE(m.from_addr,''), '@') > 0 "
+                       "THEN SUBSTR(m.from_addr, INSTR(m.from_addr, '@') + 1) "
+                       "ELSE COALESCE(m.from_addr,'') END)"), 'domain'
+        rows = self.conn.execute(f'SELECT {key} AS d, COUNT(*) AS n {sql} GROUP BY d '
                                  f'ORDER BY n DESC LIMIT ?', params + [TOP_SENDERS]).fetchall()
-        return [{'domain': r['d'] or '(none)', 'count': r['n']} for r in rows]
+        return by, [{'domain': r['d'] or '(none)', 'count': r['n']} for r in rows]
 
     def source_of(self, row):
         """Path of the mbox a row came from. Falls back to the single-source path."""
@@ -498,7 +503,8 @@ class Handler(BaseHTTPRequestHandler):
             elif url.path == '/api/count':
                 self.send_json({'total': self.store.count(qs)})
             elif url.path == '/api/senders':
-                self.send_json({'senders': self.store.senders(qs)})
+                by, senders = self.store.senders(qs)
+                self.send_json({'by': by, 'senders': senders})
             elif url.path == '/msg':
                 self.send_html(self.view_message(qs))
             elif url.path == '/raw':
