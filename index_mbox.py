@@ -22,6 +22,7 @@ import sys
 import time
 from email import policy
 from email.parser import BytesParser
+from datetime import timezone
 from email.utils import getaddresses, parsedate_to_datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -141,6 +142,8 @@ def parse_one(raw):
         try:
             dt = parsedate_to_datetime(display)
             if dt:
+                if dt.tzinfo is None:   # no zone or "-0000": UTC, not this machine's local time
+                    dt = dt.replace(tzinfo=timezone.utc)
                 epoch = int(dt.timestamp())
         except Exception:                                       # noqa: BLE001
             pass

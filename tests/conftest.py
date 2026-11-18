@@ -50,11 +50,11 @@ def write_mbox(path, messages, flavour="gmail"):
     return offsets
 
 
-def run(script, *args, check=True):
+def run(script, *args, check=True, env=None):
     """Run one of the CLI scripts with the current interpreter."""
     p = subprocess.run([sys.executable, str(ROOT / script), *map(str, args)],
                        capture_output=True, text=True, encoding="utf-8",
-                       env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+                       env={**os.environ, "PYTHONIOENCODING": "utf-8", **(env or {})})
     if check and p.returncode != 0:
         raise AssertionError(f"{script} {args} exited {p.returncode}\n{p.stdout}\n{p.stderr}")
     return p

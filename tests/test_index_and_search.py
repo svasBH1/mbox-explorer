@@ -110,3 +110,14 @@ def test_extract_writes_text_files(indexed, tmp_path):
     assert len(files) == 1
     text = files[0].read_text(encoding="utf-8")
     assert "Subject: message 3" in text and "invoice attached" in text
+
+
+def test_date_without_zone_is_utc(tmp_path):
+    p = tmp_path / "box.mbox"
+    write_mbox(p, [make_message(1, date="Mon, 03 Mar 2025 10:00:00"),
+                   make_message(2, date="Mon, 03 Mar 2025 10:00:00 -0000"),
+                   make_message(3, date="Mon, 03 Mar 2025 05:00:00 -0500")])
+    db = tmp_path / "a.sqlite"
+    # A non-UTC zone, so reading as local time would show (TZ is honoured on Linux and macOS).
+    run("index_mbox.py", p, "--db", db, env={"TZ": "America/New_York"})
+    assert {r[0] for r in rows(db, "SELECT date_epoch FROM messages")} == {1740996000}
