@@ -8,9 +8,7 @@ line or browse them in a local web viewer. The mail files are never modified. Th
 holds headers, searchable text and where each message starts; the viewer reads the full
 message, attachments included, straight from the file.
 
-It was built to answer questions like *"what did that former employee's mailbox say about X?"*
-and to spot-check mail exports, without setting up a fake mail account to hold someone else's
-archive.
+No mail account or mail client is needed: point it at the files and search.
 
 - Standard library only. Python 3.9 or newer, nothing else to install
 - Works on archives of any size: files are read in 8 MB chunks, so memory use stays small
