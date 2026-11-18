@@ -512,6 +512,11 @@ class Handler(BaseHTTPRequestHandler):
         self.send_bytes(json.dumps(obj).encode('utf-8'), 'application/json', code)
 
     def do_GET(self):                                          # noqa: N802
+        # Answer only requests addressed to this machine by name or loopback address, so a
+        # web page cannot reach the viewer through DNS rebinding.
+        port = self.server.server_address[1]
+        if self.headers.get('Host', '') not in (f'127.0.0.1:{port}', f'localhost:{port}'):
+            return self.send_html(page('Forbidden', '<p class="empty">Unexpected Host header.</p>'), 403)
         url = urlparse(self.path)
         qs = {k: v[0] for k, v in parse_qs(url.query).items()}
         try:
@@ -562,7 +567,7 @@ class Handler(BaseHTTPRequestHandler):
 <input name="msgid" inputmode="numeric" placeholder="go to id #" size="10"></form>{theme_button()}</header>
 <div id="bar"><span></span></div>
 <form class="search" name="search" autocomplete="off">
-<input name="q" placeholder="Search subject, body, people…  (AND, OR, NOT, NEAR, &quot;phrases&quot;)" autofocus>
+<input name="q" placeholder="Search subject, body, people…  (AND, OR, NOT, NEAR(a b), &quot;phrases&quot;)" autofocus>
 <input name="from" placeholder="from" size="14" title="Sender name or address contains">
 <input name="xfrom" placeholder="exclude senders" size="18" title="Comma-separated; hides senders containing any of these">
 <input name="label" placeholder="label" size="10">
@@ -632,6 +637,7 @@ id {row['id']} · byte {row['offset']:,} · {row['length']:,} bytes ·
         if not row:
             return self.send_html(page('Not found', ''), 404)
         data = self.store.raw(row)
+        data = data[data.find(b'\n') + 1:]         # drop the mbox separator line: a plain .eml
         self.send_response(200)
         self.send_header('Content-Type', 'message/rfc822')
         self.send_header('Content-Disposition', f'attachment; filename="message-{row["id"]}.eml"')

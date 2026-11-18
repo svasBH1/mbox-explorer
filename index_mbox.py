@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Index one or many mbox files into SQLite + FTS5.
 
-The mbox is opened read-only. Raw messages are not copied into the database.
-Each row stores a source, a byte offset and a length, so the viewer reads the
-original message back on demand.
+The mbox is opened read-only and never modified. The database holds headers and
+the plain-text body of each message (for full-text search), plus its source, byte
+offset and length, so the viewer reads the original message back on demand.
 
     index_mbox.py TAKEOUT_DIR --db archive.sqlite
     index_mbox.py PROFILE_DIR --db mine.sqlite
-    index_mbox.py ONE.mbox --db one.sqlite --limit 500000000   # dry run, first 500 MB
+    index_mbox.py ONE.mbox --db one.sqlite --limit 500000000   # trial run: first 500 MB
     index_mbox.py DIR --db DB --resume                         # continue after a stop
     index_mbox.py --db OLD.sqlite --migrate                    # upgrade a single-source DB
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Search an indexed mbox archive from the command line.
 
-    search_mbox.py --db A.sqlite --query 'invoice NEAR overdue'
+    search_mbox.py --db A.sqlite --query 'NEAR(invoice overdue)'
     search_mbox.py --db A.sqlite --query budget --since 2024-01-01 --until 2024-12-31
     search_mbox.py --db A.sqlite --from example.com --subject renewal --tsv
     search_mbox.py --db A.sqlite --query '"project plan"' --extract out/
@@ -9,7 +9,7 @@
 
 --query runs against the FTS5 index over subject, participants, body and labels.
 Bare words are quoted so punctuation in a search term cannot become syntax. Use
-AND, OR, NOT, NEAR and "quoted phrases" as normal.
+AND, OR, NOT, NEAR(a b) and "quoted phrases" as normal.
 
 Every run prints how many messages were searched alongside how many matched, so
 a zero result cannot be mistaken for a clean sweep.
@@ -29,14 +29,26 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from index_mbox import body_text  # noqa: E402
 from mboxlib import __version__  # noqa: E402
 
-OPERATORS = {"AND", "OR", "NOT", "NEAR"}
+OPERATORS = {"AND", "OR", "NOT"}
 TOKEN_RE = re.compile(r'"[^"]*"|\S+')
+NEAR_RE = re.compile(r"NEAR\([^()]*\)")
 
 
 def fts_query(raw):
-    """Quote bare terms so stray punctuation cannot break FTS5 syntax."""
+    """Quote bare terms so stray punctuation cannot break FTS5 syntax. NEAR(...) passes through."""
+    raw = raw or ""
+    out, pos = [], 0
+    for m in NEAR_RE.finditer(raw):
+        out.append(_quote_terms(raw[pos:m.start()]))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(_quote_terms(raw[pos:]))
+    return " ".join(x for x in out if x)
+
+
+def _quote_terms(raw):
     out = []
-    for tok in TOKEN_RE.findall(raw or ""):
+    for tok in TOKEN_RE.findall(raw):
         if tok.startswith('"') or tok.upper() in OPERATORS or tok.startswith("("):
             out.append(tok)
         elif re.fullmatch(r"[A-Za-z0-9_]+\*?", tok):

@@ -13,7 +13,8 @@ First public release.
   files; several sources in one database
 - Recognises `gmail`, `thunderbird` and `generic` separators by their full date shape, so body
   lines starting with "From " never split a message
-- `--resume`, `--limit`, `--skip-tail` for interrupted runs, trials and cut-off downloads
+- `--resume`, `--limit`, `--skip-tail` for interrupted runs, trials and cut-off downloads;
+  `--limit` stops at the last whole message, so `--resume` continues cleanly
 - `--migrate` upgrades a pre-1.0 single-source database without reindexing
 - A Date header without a time zone is read as UTC
 
@@ -24,9 +25,11 @@ First public release.
 - Go to a message by id, from the header box or `/?id=`
 - Sort by newest, oldest or best match; loading bar; light and dark mode
 - Search snippets and message bodies are escaped; nothing from a message runs as HTML
+- Answers only requests addressed to `127.0.0.1` or `localhost` (DNS-rebinding protection)
+- **raw** downloads a plain `.eml`, without the mbox separator line
 
 ### Command line
-- `mbox-search` with full-text query, sender, recipient, source and date filters; plain, TSV
+- `mbox-search` with full-text query (including `NEAR(a b)`), sender, recipient, source and date filters; plain, TSV
   or JSON output; `--extract` to text files; `--stats`
 - Installable with `pip install .`: `mbox-index`, `mbox-search`, `mbox-explorer`
 

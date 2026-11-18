@@ -96,7 +96,7 @@ def test_attachment_and_raw_download(server, indexed):
     status, ctype, body = get(f"{server}/attach?id={mid}&part={part}")
     assert status == 200 and ctype.startswith("text/csv") and body == b"col1,col2\n1,2\n"
     status, _, raw = get(f"{server}/raw?id={mid}")
-    assert status == 200 and raw.startswith(b"From ")
+    assert status == 200 and not raw.startswith(b"From ") and b"Subject: message 3" in raw.split(b"\n\n")[0]
 
 
 def test_unknown_message_and_path(server):
@@ -119,3 +119,16 @@ def test_startup_asks_old_database_to_migrate(tmp_path):
                         "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);")
     p = run("mail_explorer.py", "--db", db, check=False)
     assert p.returncode != 0 and "--migrate" in p.stderr
+
+
+def test_rejects_unexpected_host_header(server):
+    req = urllib.request.Request(server + "/api/count", headers={"Host": "attacker.example"})
+    try:
+        urllib.request.urlopen(req)
+        status = 200
+    except urllib.error.HTTPError as e:
+        status = e.code
+    assert status == 403
+    port = server.rsplit(":", 1)[1]
+    req = urllib.request.Request(server + "/api/count", headers={"Host": f"localhost:{port}"})
+    assert urllib.request.urlopen(req).status == 200

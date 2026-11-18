@@ -121,3 +121,25 @@ def test_date_without_zone_is_utc(tmp_path):
     # A non-UTC zone, so reading as local time would show (TZ is honoured on Linux and macOS).
     run("index_mbox.py", p, "--db", db, env={"TZ": "America/New_York"})
     assert {r[0] for r in rows(db, "SELECT date_epoch FROM messages")} == {1740996000}
+
+
+def test_limit_inside_a_message_keeps_whole_messages_only(tmp_path):
+    p = tmp_path / "box.mbox"
+    offsets = write_mbox(p, [make_message(i) for i in range(6)])
+    db = tmp_path / "a.sqlite"
+    run("index_mbox.py", p, "--db", db, "--limit", offsets[3] + 10)
+    assert rows(db, "SELECT COUNT(*) FROM messages") == [(3,)]
+    run("index_mbox.py", p, "--db", db, "--resume")
+    got = rows(db, "SELECT offset, length FROM messages ORDER BY offset")
+    ends = offsets[1:] + [p.stat().st_size]
+    assert got == [(o, e - o) for o, e in zip(offsets, ends)]
+
+
+def test_near_query_on_the_command_line(indexed):
+    _, hits = search(indexed, "--query", "NEAR(quarterly review)")
+    assert [h["subject"] for h in hits] == ["message 1"]
+
+
+def test_fts_query_quotes_punctuation_but_keeps_near():
+    import search_mbox
+    assert search_mbox.fts_query("NEAR(a b) ann@corp.example OR plan*") == 'NEAR(a b) "ann@corp.example" OR plan*'

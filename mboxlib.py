@@ -3,8 +3,8 @@
 
 Three separator styles are common in practice:
 
-    gmail        From 1700000000000000001@xxx Tue Mar 11 14:18:19 +0000 2025
-    thunderbird  From - Wed Aug 28 13:00:00 2026
+    gmail        From 1700000000000000001@xxx Tue Mar 11 09:00:00 +0000 2025
+    thunderbird  From - Fri Aug 28 13:00:00 2026
     generic      From user@host Mon Jan  1 00:00:00 2024
 
 SEP matches all three. The per-flavour patterns exist so a caller can report
@@ -118,7 +118,10 @@ def find_last_boundary(path, tail_bytes=64 * 1024 * 1024):
 
 
 def iter_messages(path, end_offset, start_offset=0):
-    """Yield (offset, raw_bytes) per message, one message in memory at a time.
+    """Yield (offset, raw_bytes) per message, reading in CHUNK-sized pieces.
+
+    If end_offset falls inside a message (not at a separator or end of file), that
+    partial message is not yielded, so a later resume starts at a whole message.
 
     raw_bytes includes the separator line.
     """
@@ -151,4 +154,13 @@ def iter_messages(path, end_offset, start_offset=0):
                 pending_start = abs_at
 
         if pending_start is not None and buf:
-            yield pending_start, buf
+            fh.seek(end_offset)
+            ahead = fh.read(512)
+            if not ahead or SEP.match(ahead):
+                yield pending_start, buf
+            else:
+                # end_offset fell inside a message, possibly inside its separator line: yield
+                # only the whole message before that separator, if there is one.
+                m = SEP.search(buf + ahead, 1)
+                if m and m.start() < len(buf):
+                    yield pending_start, buf[:m.start()]

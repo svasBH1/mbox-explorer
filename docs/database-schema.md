@@ -1,7 +1,9 @@
 # Database schema
 
-`mbox-index` writes one SQLite database. It holds headers, a full-text index and where each
-message sits in its mbox file. It does not hold the mail itself.
+`mbox-index` writes one SQLite database. It holds each message's headers, its plain-text body
+(in the full-text index) and where the message sits in its mbox file. Attachments and the
+original message bytes stay in the mbox. Because the body text is stored, protect the database
+like the mail itself.
 
 ## Tables
 
@@ -52,7 +54,7 @@ One row per message.
 ### `messages_fts`
 
 SQLite FTS5 table, `porter unicode61` tokenizer, with `rowid` equal to `messages.id`.
-Columns: `subject`, `participants` (sender and recipient names and addresses), `body`
+Columns: `subject`, `participants` (sender name and address, recipient addresses), `body`
 (plain text, or HTML with tags removed) and `labels`.
 
 ### `meta`
