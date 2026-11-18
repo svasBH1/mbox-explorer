@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mbox-explorer"
+dynamic = ["version"]
+description = "Index mbox mail archives (Google Takeout, Thunderbird) into SQLite full-text search, with a CLI and a local read-only web viewer."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Steve Vasilow" }]
+keywords = ["mbox", "email", "google-takeout", "thunderbird", "sqlite", "fts5", "ediscovery"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Topic :: Communications :: Email",
+]
+
+[project.urls]
+Homepage = "https://github.com/svasBH1/mbox-explorer"
+Issues = "https://github.com/svasBH1/mbox-explorer/issues"
+
+[project.scripts]
+mbox-index = "index_mbox:main"
+mbox-search = "search_mbox:main"
+mbox-explorer = "mail_explorer:main"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.setuptools]
+py-modules = ["mboxlib", "index_mbox", "search_mbox", "mail_explorer"]
+
+[tool.setuptools.dynamic]
+version = { attr = "mboxlib.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
